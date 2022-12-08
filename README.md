@@ -11,26 +11,26 @@ RPI is a sample project demonstrates the way how to incorporate new rendering fu
 
 ### Usage
 
-## To control fog appearence
+### To control fog appearence
 
-# In editor:
+### In editor:
 - Choose Weather actor in folder REQUIRED
 - Choose Details tab
 - Change Fog Start & Height
 
-# In PIE mode:
+### In PIE mode:
 - Press F + Numpad Up Arrow (8) to increase the fog height
 - Press F + Numpad Down Arrow (2) to decrease the fog height
 - Press F + Numpad Right Arrow (6) to increase the fog start distance
 - Press F + Numpad Left Arrow (4) to decrease the fog start distance
 
-## To change Time of day
+### To change Time of day
 
-# In editor:
+### In editor:
 - Add World Settings actor via Window Menu
 - Find & change Time of Day 
 
-# In PIE mode:
+### In PIE mode:
 - Press M to decrease time
 - Press CTRL + M to increase time 
   
