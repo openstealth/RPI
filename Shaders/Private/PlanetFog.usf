@@ -1,0 +1,38 @@
+﻿#include "/RPI/Private/PlanetFogCommon.ush"
+
+#ifndef THREADGROUP_SIZE
+    #define THREADGROUP_SIZE 1
+#endif
+
+float PlanetRadiusKm;
+float AtmosphereRadiusKm;
+float RadiusKm;
+float HeightFalloffKm;
+float FalloffKm;
+
+FFog GetFogLayer ()
+{
+    FFog Fog = (FFog)0;
+    Fog.PlanetRadiusKm = PlanetRadiusKm;
+    Fog.AtmosphereRadiusKm = AtmosphereRadiusKm;
+    Fog.RadiusKm = RadiusKm;
+    Fog.HeightFalloffKm = HeightFalloffKm;
+    Fog.FalloffKm = FalloffKm;
+    return Fog;
+}
+
+Texture2D SceneDepthTexture;
+void FogPS ( in float2 UV : TEXCOORD0, in float3 ScreenVector : TEXCOORD1, out float4 OutColor : SV_Target0 )
+{
+    FFog Fog = GetFogLayer ();
+
+    float3 Eye = GetEyePosition ();
+    float3 Ray = normalize ( ScreenVector );
+
+    float SceneDepth = GetSceneDepth ( SceneDepthTexture, UV, Eye );
+    
+    float3 Luminance = 0.0f;
+    float3 Transmittance = 1.0f;
+    ComputeFog ( Fog, Eye, Ray, SceneDepth, Luminance, Transmittance );
+    OutColor = GetOutputColor ( Luminance * View.PreExposure, Transmittance );
+}

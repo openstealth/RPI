@@ -1,0 +1,256 @@
+﻿#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SkyAtmosphereCommon.ush"
+#include "/Engine/Private/Random.ush"
+
+#define UnitsPerKilometer SKY_UNIT_TO_CM
+#define KilometersPerUnit CM_TO_SKY_UNIT
+
+uint2 GetSceneTextureDim ()
+{
+    return View.ViewSizeAndInvSize.xy;
+}
+
+float2 GetSceneTextureTexelSize ()
+{
+    return View.ViewSizeAndInvSize.zw;
+}
+
+SamplerState GetPointSampler ()
+{
+    return View.SharedPointClampedSampler;
+}
+
+SamplerState GetBilinearSampler ()
+{
+    return View.SharedBilinearClampedSampler;
+}
+
+SamplerState GetTrilinearSampler ()
+{
+    return View.SharedTrilinearClampedSampler;
+}
+
+float3 GetSunDirection ()
+{
+    return View.AtmosphereLightDirection[0].xyz;
+}
+
+float3 GetMoonDirection ()
+{
+    return View.AtmosphereLightDirection[1].xyz;
+}
+
+float3 GetEyePosition ()
+{
+    return ( View.SkyCameraTranslatedWorldOrigin - View.SkyPlanetTranslatedWorldCenterAndViewHeight.xyz ) * KilometersPerUnit;
+}
+
+float3 PerlinNoise ( float3 UV )
+{
+    return View.PerlinNoise3DTexture.Sample ( View.PerlinNoise3DTextureSampler, UV ).rgb;
+}
+
+float3 PerlinNoiseLod ( float3 UV, int Lod )
+{
+    return View.PerlinNoise3DTexture.SampleLevel ( View.PerlinNoise3DTextureSampler, UV, Lod ).rgb;
+}
+
+// Position MUST be in SKY_UNITS
+float3 GetSunColor ( float3 Position, float3 Offset )
+{
+    return GetAtmosphereTransmittance ( Position + Offset,
+                                        View.AtmosphereLightDirection[0].xyz,
+                                        View.SkyAtmosphereBottomRadiusKm,
+                                        View.SkyAtmosphereTopRadiusKm,
+                                        View.TransmittanceLutTexture,
+                                        View.TransmittanceLutTextureSampler ) * View.AtmosphereLightIlluminanceOnGroundPostTransmittance[0].rgb;
+}
+
+float3 GetSkyIrradiance ( float3 Position, float3 Offset )
+{
+    return Texture2DSampleLevel ( View.DistantSkyLightLutTexture, View.DistantSkyLightLutTextureSampler, float2 ( 0.5, 0.5 ), 0.0 ).rgb;
+}
+
+float3 GetGroundIrradiance ( float3 Position, float3 Offset )
+{
+    float3 Albedo = 0.3f; 
+    float3 Normal = normalize ( Position + Offset );
+    return Albedo * dot ( GetSunDirection (), Normal );// + 0.1f * Albedo * dot ( GetMoonDirection (), Normal );
+}
+
+void ApplyAtmosphere ( float3 OffsetFromCameraKm, float3 Transmittance, inout float3 Luminance )
+{
+    //if ( all ( Transmittance >= 1.0f ) )
+    //    return;
+
+    float3 WorldPosition = ResolvedView.TranslatedWorldCameraOrigin + OffsetFromCameraKm * UnitsPerKilometer;
+    float4 WorldPositionNDC = mul ( float4 ( WorldPosition, 1.0f ), LWCHackToFloat ( ResolvedView.WorldToClip ) );
+    
+    float4 AtmospherePerspective = GetAerialPerspectiveLuminanceTransmittance
+    (
+        ResolvedView.RealTimeReflectionCapture,
+        ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeSizeAndInvSize,
+        WorldPositionNDC,
+        WorldPosition * KilometersPerUnit,
+        //LWCHackToFloat ( ResolvedView.WorldCameraOrigin ) * KilometersPerUnit,
+        View.CameraAerialPerspectiveVolume,
+        View.CameraAerialPerspectiveVolumeSampler,
+        ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthResolutionInv,
+        ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthResolution,
+        ResolvedView.SkyAtmosphereAerialPerspectiveStartDepthKm,
+        ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthSliceLengthKm,
+        ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthSliceLengthKmInv,
+        ResolvedView.OneOverPreExposure
+    );
+
+    Luminance = Luminance * AtmospherePerspective.w + AtmospherePerspective.xyz * ( 1.0f - Transmittance );
+}
+
+float PhaseFunctionHG ( float G, float Mu )
+{
+    return ( 1.0 - G * G ) * pow ( 1.0 + G * G - 2.0 * G * Mu, -1.5 );
+}
+
+float PhaseFunctionIsotropic ()
+{
+    return 0.25f / PI;
+}
+
+float Remap ( float Value, float SrcStart, float SrcStop, float DstStart, float DstStop )
+{
+    return DstStart + ( DstStop - DstStart ) * ( ( Value - SrcStart ) / ( SrcStop - SrcStart ) );
+}
+
+float MeanValue ( float3 V )
+{
+    return dot ( V, 1.0f / 3.0f );
+}
+
+float2 RayIntersectsSpherePrecisely ( float3 Position, float3 Direction, float3 Center, float Radius )
+{
+#if 1
+    float3 F = Position - Center;
+    float Rsq = Radius * Radius;
+    float B2 = dot ( F, Direction );
+    float3 FD = F - B2 * Direction;
+    
+    float Discriminant = Rsq - dot ( FD, FD );
+    if ( Discriminant >= 0.0f )
+    {
+        float C = dot ( F, F ) - Rsq;
+        float DiscriminantSqrt = sqrt ( Discriminant );
+        float Q = ( B2 >= 0 ) ? -DiscriminantSqrt - B2 : DiscriminantSqrt - B2;
+
+        float T = C / Q;
+        return float2 ( min ( T, Q ), max ( T, Q ) );
+    }
+    return -1.0f;
+#else
+    return RayIntersectSphere ( Position, Direction, float4 ( Center, Radius ) );
+#endif
+}
+
+float4 RayIntersectsLayer ( float3 Position, float3 Direction, float3 Center, float BottomRadius, float TopRadius )
+{
+    float2 T = RayIntersectsSpherePrecisely ( Position, Direction, Center, TopRadius );
+    // true only if higher than top and ray doesn't intersect one
+    if ( all ( T < 0.0f ) )
+        return 0.0f;
+
+    float2 B = RayIntersectsSpherePrecisely ( Position, Direction, Center, BottomRadius );
+
+    // true only if higher than bottom and ray doesn't intersect one
+    if ( all ( B < 0.0f ) )
+        return float4 ( max ( T.x, 0.0f ), T.y, 0.0f, 0.0f );
+
+    return ( B.x > 0.0f ) ? float4 ( max ( T.x, 0.0f ), B.x, B.y, T.y ) : float4 ( B.y, T.y, 0.0f, 0.0f );
+}
+
+float4 RayIntersectsLayer ( float3 Position, float3 Direction, float3 Center, float BottomRadius, float TopRadius, float PlanetRadius )
+{
+    float4 L = RayIntersectsLayer ( Position, Direction, Center, BottomRadius, TopRadius );
+    if ( all ( L <= 0.0f ) )
+        return 0.0f;
+    
+    // planet may occlude layer if there is ray-planet intersection
+    float2 P = RayIntersectsSpherePrecisely ( Position, Direction, Center, PlanetRadius );
+    return all ( P < 0.0f ) ? L : min ( L, P.x );
+}
+
+float GetDistanceToCamera ( float3 Eye, float3 NDC )
+{
+#if 1
+    NDC.z = max ( 1e-12f, NDC.z );
+#else
+    if ( NDC.z == 0.0f )
+        return 1e15f;
+#endif
+
+    float4 WorldPosition = mul ( float4 ( NDC, 1.0f ), View.ClipToTranslatedWorld );
+    //WorldPosition.w = ( WorldPosition.w == 0.0f ) ? 1e-15f : WorldPosition.w;
+    return length ( WorldPosition.xyz / WorldPosition.w - Eye ) * KilometersPerUnit;
+}
+
+uint2 GetScreenCoords ( float2 UV, float2 ScreenSize, float2 ScreenOffset )
+{
+    float2 Coords = UV * 2.0f - 1.0f;
+    Coords.x = ( Coords.x + 1.0f ) * ScreenSize.x * 0.5f + ScreenOffset.x;
+    Coords.y = ( 1.0f - Coords.y ) * ScreenSize.y * 0.5f + ScreenOffset.y;
+    return Coords;
+}
+
+float LoadSceneDepth ( Texture2D DepthTexture, uint2 UV )
+{
+    return DepthTexture.Load ( uint3 ( UV, 0 ) ).r;
+}
+
+float GetSceneDepth ( Texture2D DepthTexture, float2 UV, float3 Eye )
+{
+#if 0
+    float2 DepthUV = float2 ( UV.x, 1.0f - UV.y );
+    float4 Depth = DepthTexture.Gather ( GetPointSampler (), DepthUV );
+    float DeviceZ = Depth.w;//max ( max ( Depth.x, Depth.y ), max ( Depth.z, Depth.w ) );
+#else
+    uint2 DepthUV = GetScreenCoords ( UV, GetSceneTextureDim (), View.ViewRectMin.xy );
+    float DeviceZ = LoadSceneDepth ( DepthTexture, DepthUV );
+
+    /*float2 CloudTexelSize = GetCloudTextureTexelSize ();
+    uint X = GetSceneTextureDim ().x * CloudTexelSize * 0.5f;
+    uint Y = GetSceneTextureDim ().y * CloudTexelSize * 0.5f;
+
+    float4 Depth = float4
+    (
+        LoadSceneDepth ( DepthTexture, uint2 ( DepthUV.x - X, DepthUV.y + Y ) ),
+        LoadSceneDepth ( DepthTexture, uint2 ( DepthUV.x + X, DepthUV.y + Y ) ),
+        LoadSceneDepth ( DepthTexture, uint2 ( DepthUV.x + X, DepthUV.y - Y ) ),
+        LoadSceneDepth ( DepthTexture, uint2 ( DepthUV.x - X, DepthUV.y - Y ) )
+    );
+    
+    float DeviceZ = min ( min ( Depth.x, Depth.y ), min ( Depth.z, Depth.w ) );*/
+#endif
+
+    return GetDistanceToCamera ( Eye, float3 ( UV * 2.0f - 1.0f, DeviceZ ) );
+}
+
+float2 GetCoarseUV ( float2 HighResCoords, float2 LowResOffset, float2 ResolutionFactor )
+{
+    float2 HighResCoordsWithOffset = HighResCoords + ResolutionFactor * LowResOffset;
+    return ResolutionFactor * int2 ( HighResCoordsWithOffset / ResolutionFactor ) + ResolutionFactor * 0.5f;
+}
+
+float2 GetCoarseDepth ( Texture2D DepthTexture, float3 Eye, float2 ClipCoords, float2 HighResCoords, float2 LowResOffset, float2 ResolutionFactor )
+{
+    float2 CoarseUV = GetCoarseUV ( HighResCoords, LowResOffset, ResolutionFactor );
+    float DeviceZ = LoadSceneDepth ( DepthTexture, CoarseUV ).r;
+    float Depth = GetDistanceToCamera ( Eye, float3 ( ClipCoords, DeviceZ ) );
+    return float2 ( Depth, DeviceZ );
+}
+
+float4 GetOutputColor ( float3 L, float3 Transmittance )
+{
+    float MeanTransmittance = dot ( Transmittance, 1.0f / 3.0f ); 
+    MeanTransmittance *= ( MeanTransmittance < 1e-2f ) ? MeanTransmittance * MeanTransmittance : 1.0f;
+    return float4 ( L, MeanTransmittance );
+}

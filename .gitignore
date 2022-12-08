@@ -1,0 +1,27 @@
+# Ignore all binary and temp unreal folders
+[Bb]uild/
+[Bb]inaries/
+[Ii]ntermediate/
+[Ss]aved/
+[Rr]eleases/
+[Dd]erivedDataCache/
+
+# Ignore all content folders except Required subfolder
+[Cc]ontent*/*
+![Cc]ontent/[Rr]equired
+[Mm]ods*/*
+
+# Ignore all project models plugins
+[Mm]ods
+
+# Add build scripts ignoring anything else in its folder
+[Dd]eploy/*
+![Dd]eploy/Config.Example.bat
+![Dd]eploy/BuildDLC.bat
+![Dd]eploy/BuildAllDLCs.bat
+![Dd]eploy/BuildRPI.bat
+
+*.sln
+.vs/
+.p4ignore
+.vsconfig

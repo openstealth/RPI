@@ -1,0 +1,92 @@
+﻿#pragma once
+
+#include "/RPI/Private/SceneCommon.ush"
+
+#define APPROXIMATE_FOG_LUMINANCE 1
+
+struct FFog
+{
+    float PlanetRadiusKm;
+    float AtmosphereRadiusKm;
+    float RadiusKm;
+    float HeightFalloffKm;
+    float FalloffKm;
+};
+
+void ComputeFog ( FFog Fog, float3 Position, float3 Direction, float SceneDepth, inout float3 Luminance, inout float3 Transmittance )
+{
+     float FogFalloffKm = Fog.FalloffKm;
+     if ( FogFalloffKm <= 0.0f )
+         return;
+
+     float BottomRadiusKm = Fog.PlanetRadiusKm;
+     //float TopRadiusKm = Fog.AtmosphereRadiusKm;
+     float TopRadiusKm = Fog.RadiusKm;
+
+     float2 Range = min ( RayIntersectsLayer ( Position, Direction, 0.0f, BottomRadiusKm, TopRadiusKm ).xy, SceneDepth );
+
+     float Distance = Range.y - Range.x;
+     if ( Distance <= 0.0f )
+         return;
+
+     float FogHeightFalloffKm = Fog.HeightFalloffKm;
+     float FogAlbedo = 1.0f;
+     
+     float PhaseFunction = PhaseFunctionIsotropic ();
+    
+     Luminance = 0.0f;
+     Transmittance = 1.0f;
+
+     float Samples = 32;
+     float Step = Distance / ( Samples * Samples - 2.0f * Samples + 1.0f );
+
+#if 1
+     Step = min ( 0.1f, Step );
+     Samples = sqrt ( Distance / Step ) + 1.0f;
+#endif
+
+     float3 T = 1.0f;
+     for ( float i = 0.0f; i < Samples && all ( Transmittance > 1e-3f ); i++ )
+     {
+         float SampleDistance = i * i * Step + Range.x;
+         float SampleDelta = ( 2.0f * i + 1.0f ) * Step;
+         
+         float3 SamplePosition = Position + Direction * SampleDistance;
+
+         float RadiusKm = length ( SamplePosition );
+         float Extinction = FogFalloffKm * exp ( -( RadiusKm - BottomRadiusKm ) * FogHeightFalloffKm );
+         
+#if !APPROXIMATE_FOG_LUMINANCE
+         float Scattering = FogAlbedo * Extinction;
+         if ( any ( Scattering > 0.0f ) )
+         {
+             float DistanceToTop = max ( TopRadiusKm - RadiusKm, 1e-6f );
+             float3 Lsun = GetSunColor ( Position, Direction * SampleDistance );
+             float3 Lsca = Scattering * PhaseFunction * Lsun;// * exp ( -DistanceToTop * Extinction );
+             Luminance += Transmittance * Lsca * SampleDelta;
+         }
+#endif
+
+         Transmittance *= exp ( -Extinction * SampleDelta );
+     }
+
+#if APPROXIMATE_FOG_LUMINANCE
+     //float3 Lsun = View.AtmosphereLightColorGlobalPostTransmittance[0].rgb;
+     float3 Lsun = GetSunColor ( Position, Direction * Range.x );
+     float3 IsotropicLsun = MeanValue ( Lsun );
+
+     int ScatteringOrders = 5;
+     Luminance = 0.0f;
+     float LuminancePower = 1.0f;
+     [unroll]
+     for ( int i = 0; i < ScatteringOrders; i++ )
+     {
+         float IsotropicFactor = float ( i ) / float ( ScatteringOrders - 1 );
+         float3 Lsca = lerp ( Lsun, IsotropicLsun, IsotropicFactor );
+         Luminance += Lsca * LuminancePower;
+         LuminancePower *= 0.7f;
+     }
+
+     Luminance *= PhaseFunction * ( 1.0f - Transmittance );
+#endif
+}
