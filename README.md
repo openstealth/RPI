@@ -1,6 +1,6 @@
 # RPI - Rendering Pipeline Integration
 
-RPI is a sample project demonstrates the way how to incorporate new rendering functionality into existing rendering pipeline without refactoring UE source code
+RPI is a sample project that demonstrates the way how to incorporate new rendering functionality into existing rendering pipeline without refactoring UE source code
 
 ### Features
 - Custom fog component & render proxy
