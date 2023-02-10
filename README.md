@@ -1,6 +1,6 @@
 # RPI - Rendering Pipeline Integration
 
-RPI is a sample project that demonstrates the way how to incorporate new rendering functionality into existing rendering pipeline without refactoring UE source code
+RPI is a sample project that demonstrates a way to incorporate new rendering functionality into an existing rendering pipeline without refactoring the UE source code
 
 ### Features
 - Custom fog component & render proxy
@@ -11,7 +11,7 @@ RPI is a sample project that demonstrates the way how to incorporate new renderi
 
 ### Usage
 
-### To control fog appearence
+### To control fog appearance
 
 ### In editor:
 - Choose Weather actor in folder REQUIRED
