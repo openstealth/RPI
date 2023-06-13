@@ -88,13 +88,14 @@ void ApplyAtmosphere ( float3 OffsetFromCameraKm, float3 Transmittance, inout fl
     float3 WorldPosition = ResolvedView.TranslatedWorldCameraOrigin + OffsetFromCameraKm * UnitsPerKilometer;
     float4 WorldPositionNDC = mul ( float4 ( WorldPosition, 1.0f ), LWCHackToFloat ( ResolvedView.WorldToClip ) );
     
+    const float NearFadeOutRangeInvDepthKm = 1.0 / 0.00001f; // 1 centimeter fade region
+
     float4 AtmospherePerspective = GetAerialPerspectiveLuminanceTransmittance
     (
         ResolvedView.RealTimeReflectionCapture,
         ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeSizeAndInvSize,
         WorldPositionNDC,
         WorldPosition * KilometersPerUnit,
-        //LWCHackToFloat ( ResolvedView.WorldCameraOrigin ) * KilometersPerUnit,
         View.CameraAerialPerspectiveVolume,
         View.CameraAerialPerspectiveVolumeSampler,
         ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthResolutionInv,
@@ -102,7 +103,8 @@ void ApplyAtmosphere ( float3 OffsetFromCameraKm, float3 Transmittance, inout fl
         ResolvedView.SkyAtmosphereAerialPerspectiveStartDepthKm,
         ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthSliceLengthKm,
         ResolvedView.SkyAtmosphereCameraAerialPerspectiveVolumeDepthSliceLengthKmInv,
-        ResolvedView.OneOverPreExposure
+        ResolvedView.OneOverPreExposure,
+        NearFadeOutRangeInvDepthKm
     );
 
     Luminance = Luminance * AtmospherePerspective.w + AtmospherePerspective.xyz * ( 1.0f - Transmittance );

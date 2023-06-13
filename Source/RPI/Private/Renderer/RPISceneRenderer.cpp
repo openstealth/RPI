@@ -1,5 +1,6 @@
 #include "Renderer/RPISceneRenderer.h"
 #include "Renderer/Private/SceneRendering.h"
+#include "DataDrivenShaderPlatformInfo.h"
 
 FRPISceneRendererParameters FRPISceneRenderer::Parameters;
 

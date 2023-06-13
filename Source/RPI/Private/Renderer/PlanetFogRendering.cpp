@@ -3,6 +3,7 @@
 #include "Renderer/PlanetFogSceneProxy.h"
 
 #include "Renderer/Private/ScenePrivate.h"
+#include "DataDrivenShaderPlatformInfo.h"
 
 static FAutoConsoleVariableRef CVarFogRendererHeightFalloffScale
 (
@@ -65,7 +66,6 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFogUniformShaderParameters,)
     SHADER_PARAMETER ( float, HeightFalloffKm )
     SHADER_PARAMETER ( float, FalloffKm )
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
-
 
 class FFogPS : public FGlobalShader
 {

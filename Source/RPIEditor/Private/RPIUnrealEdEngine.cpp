@@ -108,7 +108,11 @@ void URPIUnrealEdEngine::SetupWorld ()
 
 void URPIUnrealEdEngine::SetupTemplateMap ()
 {
-    TemplateMapInfos.Empty ();
+    OnGetTemplateMapInfos ().BindLambda ( [] () -> const TArray<FTemplateMapInfo>&
+    {
+        static const TArray<FTemplateMapInfo> EmptyTemplateMapInfos;
+        return EmptyTemplateMapInfos;
+    } );
     
     FEditorDelegates::MapChange.AddLambda ( [this] ( uint32 MapChangeFlags )
     {
