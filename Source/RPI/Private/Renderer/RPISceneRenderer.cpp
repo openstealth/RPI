@@ -1,5 +1,5 @@
 #include "Renderer/RPISceneRenderer.h"
-#include "Renderer/Private/SceneRendering.h"
+#include "Runtime/Renderer/Private/SceneRendering.h"
 #include "DataDrivenShaderPlatformInfo.h"
 
 FRPISceneRendererParameters FRPISceneRenderer::Parameters;
@@ -13,7 +13,7 @@ public:
 
 protected:
 
-    virtual void InitRHI () override
+    virtual void InitRHI ( FRHICommandListBase& CmdList ) override
     {
         TResourceArray<FVector2f, VERTEXBUFFER_ALIGNMENT> Vertices;
         Vertices.SetNumUninitialized ( 3 );
@@ -22,7 +22,7 @@ protected:
         Vertices[2] = FVector2f ( -1.0f, 3.0f );
 
         FRHIResourceCreateInfo CreateInfo ( TEXT ( "RPISceneRendererFullscreenVB" ), &Vertices );
-        VertexBuffer = RHICreateVertexBuffer ( Vertices.GetResourceDataSize (), BUF_Static, CreateInfo );
+        VertexBuffer = CmdList.CreateVertexBuffer ( Vertices.GetResourceDataSize (), BUF_Static, CreateInfo );
 
         FVertexDeclarationElementList Elements;
         Elements.Add ( FVertexElement ( 0, 0, VET_Float2, 0, sizeof ( FVector2f ) ) );
@@ -72,7 +72,8 @@ void FRPISceneRenderer::SetFullscreenPipeline ( FRHICommandList& CmdList, FGloba
     //SetGraphicsPipelineState ( CmdList, Pipeline, 0, EApplyRendertargetOption::CheckApply, true );
     SetGraphicsPipelineState ( CmdList, Pipeline, 0 );
 
-    SetUniformBufferParameter ( CmdList, VertexShader.GetVertexShader (), VertexShader->GetUniformBufferParameter<FViewUniformShaderParameters> (), ViewUniformBuffer );
+    FRHIBatchedShaderParameters& BatchedParameters = CmdList.GetScratchShaderParameters ();
+    SetUniformBufferParameter ( BatchedParameters, VertexShader->GetUniformBufferParameter<FViewUniformShaderParameters> (), ViewUniformBuffer );
 }
 
 void FRPISceneRenderer::SetFullscreenPipeline ( const FViewInfo& View, FRHICommandList& CmdList, FGraphicsPipelineStateInitializer& Pipeline, const TShaderRef<FShader>& PixelShader )

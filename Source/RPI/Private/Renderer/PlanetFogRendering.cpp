@@ -2,7 +2,7 @@
 #include "Renderer/RPIScene.h"
 #include "Renderer/PlanetFogSceneProxy.h"
 
-#include "Renderer/Private/ScenePrivate.h"
+#include "Runtime/Renderer/Private/ScenePrivate.h"
 #include "DataDrivenShaderPlatformInfo.h"
 
 static FAutoConsoleVariableRef CVarFogRendererHeightFalloffScale

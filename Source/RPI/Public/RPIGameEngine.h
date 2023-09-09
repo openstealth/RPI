@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Classes/Engine/GameEngine.h"
+#include "Runtime/Engine/Classes/Engine/GameEngine.h"
 #include "RPIGameEngine.generated.h"
 
 UCLASS()

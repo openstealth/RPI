@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Classes/Engine/GameViewportClient.h"
+#include "Runtime/Engine/Classes/Engine/GameViewportClient.h"
 #include "RPIGameViewportClient.generated.h"
 
 UCLASS()

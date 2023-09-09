@@ -1,7 +1,7 @@
 #include "Renderer/RPIScene.h"
 #include "RenderingThread.h"
 #include "RPIWorldSubsystem.h"
-#include "Renderer/Private/SceneRendering.h"
+#include "Runtime/Renderer/Private/SceneRendering.h"
 
 FRPIScene * FRPIScene::Get ( UWorld * World )
 {
